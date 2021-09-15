@@ -2,11 +2,12 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"github.com/ligao-cloud-native/kubemc/pkg/apis/xwc/v1"
+	"github.com/ligao-cloud-native/xwc-controller/pkg/provider"
+	"k8s.io/klog/v2"
 	clientset "k8s.io/sample-controller/pkg/generated/clientset/versioned"
 	"time"
-
-	"k8s.io/klog/v2"
 )
 
 // OnAdd handle "new" or "" status
@@ -100,20 +101,43 @@ func (c *XWCController) onAdd(wc *v1.WorkloadCluster) {
 
 	// install
 	c.startInstaller(wc)
+
+	klog.Infof("onAdd[%s] install success. cluster status: %s", wc.Name, wc.Status.Phase)
+
 }
 
 func (c *XWCController) startInstaller(wc *v1.WorkloadCluster) {
-	prcheckChan := make(chan interface{})
+	precheckResultCh := make(chan provider.PrecheckResultInterface)
+	precheckFinishedCh := make(chan interface{})
 
 	// precheck
-	go c.xwcProvider.Precheck(wc)
+	go c.xwcProvider.Precheck(wc, precheckResultCh, precheckFinishedCh)
 
-	// precheck通过后安装
+	// precheck通过后安装,
 	go func() {
+		checkResult := ""
 		select {
-		case <-prcheckChan:
+		case <-precheckFinishedCh:
+			for res := range precheckResultCh {
+				if !res.IsSuccess() {
+					checkResult += fmt.Sprintf("[%s]%s", res.HostInfo(), res.ResultMessage())
+				}
+			}
 		case <-time.After(defaultPrecheckTimeout):
+		}
+
+		//TODO: update xwc object check status
+		if err := c.updatePrecheckStatus(wc, checkResult); err != nil {
+			klog.Error(err)
 		}
 	}()
 
+}
+
+func (c *XWCController) updatePrecheckStatus(wc *v1.WorkloadCluster, checkResult string) error {
+	c.xwcCacheStore.List()
+
+	wc.Status.Reasone = checkResult
+
+	return nil
 }

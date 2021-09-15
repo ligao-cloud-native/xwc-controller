@@ -1,7 +1,6 @@
 package xwcagent
 
 import (
-	"encoding/json"
 	"fmt"
 	ctlconfig "github.com/ligao-cloud-native/xwc-controller/config"
 	"github.com/ligao-cloud-native/xwc-controller/provider/xwcagent/agentclient"
@@ -14,20 +13,42 @@ const (
 	PrecheckTimeout = 60 * time.Second
 )
 
+type PrecheckResult struct {
+	Host    string
+	NodeID  string
+	CmdList []string
+	Success bool
+	Result  string
+}
+
+func (r *PrecheckResult) IsSuccess() bool {
+	return r.Success
+}
+
+func (r *PrecheckResult) HostInfo() string {
+	return fmt.Sprintf("%v[%v]", r.NodeID, r.Host)
+}
+
+func (r *PrecheckResult) ResultMessage() string {
+	return r.Result
+}
+
 type PreChecker struct {
-	agentClient   *agentclient.Client
-	command       string
-	timeout       time.Duration
-	retryTimes    int
-	retryWaitTime time.Duration
+	agentClient    *agentclient.Client
+	command        string
+	timeout        time.Duration
+	retryTimes     int
+	retryWaitTime  time.Duration
+	precheckResult *PrecheckResult
 }
 
 func NewAgentPreChecker() *PreChecker {
 	return &PreChecker{
-		agentClient:   initAgentClient(),
-		timeout:       PrecheckTimeout,
-		retryTimes:    3,
-		retryWaitTime: 2 * time.Second,
+		agentClient:    initAgentClient(),
+		timeout:        PrecheckTimeout,
+		retryTimes:     3,
+		retryWaitTime:  2 * time.Second,
+		precheckResult: &PrecheckResult{},
 	}
 }
 

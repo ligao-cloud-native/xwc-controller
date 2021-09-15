@@ -8,7 +8,10 @@ import (
 )
 
 func NewDefaultControllerConfig() *ControllerConfig {
-	return &ControllerConfig{}
+	return &ControllerConfig{
+		InstallerServer: "",
+	}
+
 }
 
 func (c *ControllerConfig) LoadConfigFromFileOrEnv(filename string, env bool) error {
