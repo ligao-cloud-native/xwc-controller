@@ -11,8 +11,8 @@ var once sync.Once
 
 type Configure struct {
 	ControllerConfig *v1.ControllerConfig
-	SSHPrivateKey    string
-	SSHPublicKey     string
+	SSHPrivateKey    []byte
+	SSHPublicKey     []byte
 	SecretId         string
 	SecretKey        string
 }
@@ -26,13 +26,13 @@ func InitConfigure(cfg *v1.ControllerConfig) {
 		//TODO: 如果没ssh private.key和public.key文件,则自动生成
 		privateKey, err := ioutil.ReadFile("/etc/xwc-controller/private.key")
 		if err == nil {
-			Config.SSHPrivateKey = string(privateKey)
+			Config.SSHPrivateKey = privateKey
 		} else {
 		}
 
 		publicKey, err := ioutil.ReadFile("/etc/xwc-controller/public.key")
 		if err == nil {
-			Config.SSHPublicKey = string(publicKey)
+			Config.SSHPublicKey = publicKey
 		} else {
 		}
 	})

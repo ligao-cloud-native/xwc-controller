@@ -5,9 +5,13 @@ import (
 	"fmt"
 	"github.com/ligao-cloud-native/kubemc/pkg/apis/xwc/v1"
 	"github.com/ligao-cloud-native/xwc-controller/pkg/provider"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
-	clientset "k8s.io/sample-controller/pkg/generated/clientset/versioned"
 	"time"
+)
+
+const (
+	installerMaxTTL = 900 // 15 minute timeout
 )
 
 // OnAdd handle "new" or "" status
@@ -25,10 +29,6 @@ func (c *XWCController) OnAdd(obj interface{}) {
 
 	//TODO: metric
 }
-
-func (c *XWCController) OnUpdate(oldObj, newObj interface{}) {}
-
-func (c *XWCController) OnDelete(obj interface{}) {}
 
 func (c *XWCController) onAdd(wc *v1.WorkloadCluster) {
 	if wc.GetFinalizers() == nil {
@@ -66,6 +66,7 @@ func (c *XWCController) onAdd(wc *v1.WorkloadCluster) {
 	}
 
 	if wc.Spec.Cluster.Network.PodCIDR == "" {
+
 		wc.Spec.Cluster.Network.PodCIDR = defaultPodCird
 	}
 	if wc.Spec.Cluster.Network.ServiceCIDR == "" {
@@ -137,7 +138,62 @@ func (c *XWCController) startInstaller(wc *v1.WorkloadCluster) {
 func (c *XWCController) updatePrecheckStatus(wc *v1.WorkloadCluster, checkResult string) error {
 	c.xwcCacheStore.List()
 
-	wc.Status.Reasone = checkResult
+	wc.Status.Reason = checkResult
 
 	return nil
 }
+
+func (c *XWCController) OnUpdate(oldObj, newObj interface{}) {
+	oldWC, isOldWC := oldObj.(*v1.WorkloadCluster)
+	wc, isNewWC := newObj.(*v1.WorkloadCluster)
+	if !isOldWC || isNewWC {
+		klog.Error("not a WorkloadCluster object")
+		return
+	}
+
+	if oldWC.Status.Phase != wc.Status.Phase {
+		klog.Infof("OnUpdate[%s]: old state: %v, new state %v",
+			oldWC.Name, oldWC.Status.Phase, wc.Status.Phase)
+	}
+
+	c.onUpdate(wc)
+
+}
+
+func (c *XWCController) onUpdate(wc *v1.WorkloadCluster) {
+	// to update wc object
+	switch wc.Status.Phase {
+	case v1.WorkloadClusterPrechecking:
+		klog.Infof("OnUpdate[%s] state: %v", wc.Name, wc.Status.Phase)
+		return
+	case v1.WorkloadClusterInstalling, v1.WorkloadClusterReducing, v1.WorkloadClusterScaling, v1.WorkloadClusterRemoving:
+		// check timeout
+		if metav1.Now().Unix()-wc.Status.LastTransitionTime.Unix() > installerMaxTTL {
+			wc.Status.Phase = v1.WorkloadClusterTimeout
+			wc.Status.LastTransitionTime = metav1.Time{}
+			// TODO: update wc, if error return
+		}
+	case v1.WorkloadClusterGone:
+		// wc is remove
+		wc.Finalizers = nil
+		if len(wc.Spec.Cluster.Workers) == 0 {
+			wc.Spec.Cluster.Workers = []v1.Node{}
+		}
+		// TODO: update wc, if error return
+	//case v1.WorkloadClusterPrecheckFail, v1.WorkloadClusterFailed, v1.WorkloadClusterTimeout:
+	//	return
+	case v1.WorkloadClusterPrecheckFail:
+
+		return
+	case v1.WorkloadClusterSuccess:
+
+		return
+	}
+
+	// to done k8s
+	c.xwcProvider.Install(wc)
+	// TODO: update wc
+
+}
+
+func (c *XWCController) OnDelete(obj interface{}) {}

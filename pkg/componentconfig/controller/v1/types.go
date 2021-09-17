@@ -2,14 +2,19 @@ package v1
 
 type ControllerConfig struct {
 	InstallerServer string
-	Base            *Base
+	All             *All
 	Addon           *Addon
 	Env             *Env
 }
 
-type Base struct {
-	ServiceSubnet string
-	PodSubnet     string
+type All struct {
+	LoadbalanceApiserver     LoadbalanceApiserver `json:"loadbalancer_apiserver"`
+	ServiceSubnet            string               `json:"kube_service_addresses"`
+	PodSubnet                string               `json:"kube_pods_subnet"`
+	WorkloadClusterName      string               `json:"workload_cluster_name"`
+	AnsibleSSHPrivateKeyFile string               `json:"ansible_ssh_private_key_file"`
+	AnsibleSSHCommonArgs     string               `json:"ansible_ssh_common_args"`
+	AnsibleSSHPass           string               `json:"ansible_ssh_pass"`
 }
 
 type Addon struct {
@@ -31,5 +36,11 @@ type Env struct {
 	XwcServerSecretKey string
 
 	FileServer         string
-	InstallerImageName string
+	InstallerImageName string `josn:"installer_image_name"`
+	InstallerLogLevel  string `josn:"installer_log_level"`
+}
+
+type LoadbalanceApiserver struct {
+	Address string `json:"Address"`
+	Port    string `json:"Port"`
 }

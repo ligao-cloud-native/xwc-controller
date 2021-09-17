@@ -10,6 +10,10 @@ import (
 func NewDefaultControllerConfig() *ControllerConfig {
 	return &ControllerConfig{
 		InstallerServer: "",
+		All: &All{
+			AnsibleSSHPrivateKeyFile: "/opt/mycluster/private.key",
+			AnsibleSSHCommonArgs:     "-o StrictHostKeyChecking=no",
+		},
 	}
 
 }

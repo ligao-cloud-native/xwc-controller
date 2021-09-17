@@ -7,5 +7,5 @@ import (
 
 type Interface interface {
 	Precheck(wc *v1.WorkloadCluster, resultCh chan<- provider.PrecheckResultInterface, finished chan<- interface{})
-	Install()
+	Install(wc *v1.WorkloadCluster)
 }

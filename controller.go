@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"encoding/json"
+	ctlv1 "github.com/ligao-cloud-native/kubemc/pkg/apis/xwc/v1"
+	xwcclient "github.com/ligao-cloud-native/kubemc/pkg/client/clientset/versioned"
 	controllercfg "github.com/ligao-cloud-native/xwc-controller/config"
 	config "github.com/ligao-cloud-native/xwc-controller/pkg/componentconfig/controller/v1"
 	"github.com/ligao-cloud-native/xwc-controller/provider"
@@ -16,8 +18,6 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog/v2"
-	ctlv1alpha1 "k8s.io/sample-controller/pkg/apis/samplecontroller/v1alpha1"
-	clientset "k8s.io/sample-controller/pkg/generated/clientset/versioned"
 	"os"
 	"time"
 )
@@ -38,7 +38,7 @@ type XWCController struct {
 	// kubeclientset is a standard kubernetes clientset
 	kubeClientSet kubernetes.Interface
 	// sampleclientset is a clientset for our own API group
-	xwcClientSet clientset.Interface
+	xwcClientSet xwcclient.Interface
 	// install k8s provider
 	xwcProvider provider.Interface
 	// xwc cache
@@ -58,12 +58,12 @@ func NewController(cfg *config.ControllerConfig) *XWCController {
 		os.Exit(1)
 	}
 	kubeClient := kubernetes.NewForConfigOrDie(kubeConfig)
-	xwcClient := clientset.NewForConfigOrDie(kubeConfig)
+	xwcClient := xwcclient.NewForConfigOrDie(kubeConfig)
 
 	var installer provider.Interface
 	switch provider.ProviderType(installProvider) {
 	case provider.XWCAgentProvider:
-		installer = xwcagent.NewXwcAgentProvider()
+		installer = xwcagent.NewXwcAgentProvider(installProvider, kubeClient)
 	case provider.RPCProvider:
 	}
 
@@ -113,13 +113,13 @@ func (c *XWCController) startController() {
 	store, controller := cache.NewInformer(
 		&cache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (result runtime.Object, err error) {
-				return c.xwcClientSet.SamplecontrollerV1alpha1().Foos("").List(context.TODO(), options)
+				return c.xwcClientSet.WorkloadClustersV1().Foos("").List(context.TODO(), options)
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 				return c.xwcClientSet.SamplecontrollerV1alpha1().Foos("").Watch(context.TODO(), options)
 			},
 		},
-		&ctlv1alpha1.Foo{},
+		&ctlv1.WorkloadCluster{},
 		1*time.Minute,
 		c)
 	go controller.Run(wait.NeverStop)

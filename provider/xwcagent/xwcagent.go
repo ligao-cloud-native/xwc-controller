@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"github.com/ligao-cloud-native/kubemc/pkg/apis/xwc/v1"
 	"github.com/ligao-cloud-native/xwc-controller/pkg/provider"
+	"k8s.io/client-go/kubernetes"
 	"strings"
-
 	//ctlconfig"github.com/ligao-cloud-native/xwc-controller/config"
 	//"github.com/ligao-cloud-native/xwc-controller/provider/xwcagent/agentclient"
 	"k8s.io/klog/v2"
@@ -15,17 +15,27 @@ import (
 	"time"
 )
 
+var operateStage = map[string]string{
+	fmt.Sprintf("%v%v", v1.WorkloadClusterInstalling, v1.WorkloadClusterActionInstall): "install",
+	fmt.Sprintf("%v%v", v1.WorkloadClusterRemoving, v1.WorkloadClusterActionRemove):    "remove",
+	fmt.Sprintf("%v%v", v1.WorkloadClusterScaling, v1.WorkloadClusterActionScale):      "scale",
+	fmt.Sprintf("%v%v", v1.WorkloadClusterReducing, v1.WorkloadClusterActionReduce):    "reduce",
+}
+
 type XwcAgentProvider struct {
-	prechecker *PreChecker
-	//Installer
+	name       string
+	prechecker provider.Prechecker
+	installer  provider.Installer
 	//agentClient *agentclient.Client
 }
 
-func NewXwcAgentProvider() *XwcAgentProvider {
+func NewXwcAgentProvider(name string, kubeClient kubernetes.Interface) *XwcAgentProvider {
 
 	return &XwcAgentProvider{
+		name: name,
 		//agentClient: initAgentClient(),
 		prechecker: NewAgentPreChecker(),
+		installer:  NewInstaller(name, kubeClient),
 	}
 }
 
@@ -67,7 +77,20 @@ func (a *XwcAgentProvider) Precheck(wc *v1.WorkloadCluster, resultCh chan<- prov
 	finished <- true
 }
 
-func (a *XwcAgentProvider) Install() {}
+func (a *XwcAgentProvider) Install(wc *v1.WorkloadCluster) {
+	switch operateStage[fmt.Sprintf("%v%v", wc.Status.Phase, wc.Status.Action)] {
+	case "install":
+		a.installer.Install(wc)
+	case "remove":
+		a.installer.Reset()
+	case "scale":
+		a.installer.Scale()
+	case "reduce":
+		a.installer.Reduce()
+	default:
+		klog.Warningf("do nothing.")
+	}
+}
 
 func (a *XwcAgentProvider) preCheck(uuid, ip, command string) {
 
