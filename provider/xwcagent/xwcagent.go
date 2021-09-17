@@ -92,10 +92,6 @@ func (a *XwcAgentProvider) Install(wc *v1.WorkloadCluster) {
 	}
 }
 
-func (a *XwcAgentProvider) preCheck(uuid, ip, command string) {
-
-}
-
 func isPrecheckTimeout(cmdOutput, ip string) (bool, error) {
 	scanner := bufio.NewScanner(bytes.NewReader([]byte(cmdOutput)))
 	for scanner.Scan() {

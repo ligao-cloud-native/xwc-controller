@@ -1,7 +1,7 @@
 package provider
 
 type Prechecker interface {
-	PreCheck(args ...string) (int, string)
+	PreCheck(ip, uuid string) (int, string)
 }
 
 type PrecheckResultInterface interface {

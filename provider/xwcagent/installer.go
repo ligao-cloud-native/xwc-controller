@@ -38,7 +38,6 @@ type Installer struct {
 func NewInstaller(name string, clientSet kubernetes.Interface) *Installer {
 	return &Installer{
 		clientSet:    clientSet,
-		config:       ctlcfg.Config,
 		providerName: name,
 	}
 
@@ -70,8 +69,7 @@ func (i *Installer) createJobConfigMap(wc *v1.WorkloadCluster) error {
 		return nil
 	}
 
-	cm := i.buildConfigMap(wc)
-
+	cm := buildConfigMap(wc)
 	if cm == nil {
 		return fmt.Errorf("build configMap from wc object %s error", wc.Name)
 	}
@@ -89,7 +87,7 @@ func (i *Installer) createJobSecret(wc *v1.WorkloadCluster) error {
 		return nil
 	}
 
-	secret := i.buildSecret(wc)
+	secret := buildSecret(wc)
 	if secret == nil {
 		return fmt.Errorf("build secret from wc object %s error", wc.Name)
 	}
@@ -103,7 +101,7 @@ func (i *Installer) createJobSecret(wc *v1.WorkloadCluster) error {
 }
 
 func (i *Installer) createJob(wc *v1.WorkloadCluster) error {
-	job := i.buildJob(wc.Name, JobTypeInstall, []string{"k8s", "install"})
+	job := buildJob(wc.Name, JobTypeInstall, []string{"k8s", "install"})
 	if job == nil {
 		return fmt.Errorf("build job from wc object %s error", wc.Name)
 	}
@@ -115,7 +113,7 @@ func (i *Installer) createJob(wc *v1.WorkloadCluster) error {
 	return nil
 }
 
-func (i *Installer) buildConfigMap(wc *v1.WorkloadCluster) *corev1.ConfigMap {
+func buildConfigMap(wc *v1.WorkloadCluster) *corev1.ConfigMap {
 	hostData := getHostsYaml()
 	if len(hostData) == 0 {
 		return nil
@@ -135,7 +133,7 @@ func (i *Installer) buildConfigMap(wc *v1.WorkloadCluster) *corev1.ConfigMap {
 		"nodes.json": string(nodeData),
 	}
 
-	for k, v := range i.getOtherData(wc) {
+	for k, v := range getOtherData(wc) {
 		cm.Data[k] = string(v)
 	}
 
@@ -143,14 +141,14 @@ func (i *Installer) buildConfigMap(wc *v1.WorkloadCluster) *corev1.ConfigMap {
 
 }
 
-func (i *Installer) buildSecret(wc *v1.WorkloadCluster) *corev1.Secret {
+func buildSecret(wc *v1.WorkloadCluster) *corev1.Secret {
 	data := make(map[string][]byte)
 
-	if len(i.config.SSHPublicKey) > 0 {
-		data["private.key"] = i.config.SSHPublicKey
+	if len(ctlcfg.Config.SSHPublicKey) > 0 {
+		data["private.key"] = ctlcfg.Config.SSHPublicKey
 	}
-	if len(i.config.SSHPrivateKey) > 0 {
-		data["public.key"] = i.config.SSHPublicKey
+	if len(ctlcfg.Config.SSHPrivateKey) > 0 {
+		data["public.key"] = ctlcfg.Config.SSHPublicKey
 	}
 
 	secret := corev1.Secret{}
@@ -165,7 +163,7 @@ func (i *Installer) buildSecret(wc *v1.WorkloadCluster) *corev1.Secret {
 
 }
 
-func (i *Installer) buildJob(wcName string, jobType JobType, jobCmd []string) *batchv1.Job {
+func buildJob(wcName string, jobType JobType, jobCmd []string) *batchv1.Job {
 	job := batchv1.Job{}
 
 	labels := map[string]string{
@@ -173,7 +171,7 @@ func (i *Installer) buildJob(wcName string, jobType JobType, jobCmd []string) *b
 	}
 
 	// job meta
-	job.Name = fmt.Sprintf("%s-%s-%s", wcName, jobType, utils.RandomStr(4))
+	job.Name = fmt.Sprintf("%s-%s-%s", wcName, jobType, utils.RandomStr(5))
 	job.Namespace = pksInstallerNamespace
 	job.Labels = labels
 
@@ -191,7 +189,7 @@ func (i *Installer) buildJob(wcName string, jobType JobType, jobCmd []string) *b
 	job.Spec.Template.Spec.Containers = []corev1.Container{
 		{
 			Name:            wcName,
-			Image:           i.config.ControllerConfig.Env.RegistryUrl + "/" + i.config.ControllerConfig.Env.InstallerImageName,
+			Image:           ctlcfg.Config.ControllerConfig.Env.RegistryUrl + "/" + ctlcfg.Config.ControllerConfig.Env.InstallerImageName,
 			ImagePullPolicy: corev1.PullIfNotPresent,
 			Args:            jobCmd,
 			Env: []corev1.EnvVar{
@@ -205,7 +203,7 @@ func (i *Installer) buildJob(wcName string, jobType JobType, jobCmd []string) *b
 				},
 				{
 					Name:  "INSTALLER_LOG_LEVEL",
-					Value: i.config.ControllerConfig.Env.InstallerLogLevel,
+					Value: ctlcfg.Config.ControllerConfig.Env.InstallerLogLevel,
 				},
 			},
 			VolumeMounts: []corev1.VolumeMount{
@@ -282,8 +280,8 @@ func (i *Installer) buildJob(wcName string, jobType JobType, jobCmd []string) *b
 func getHostsYaml() []byte {}
 func getNodesJson() []byte {}
 
-func (i *Installer) getOtherData(wc *v1.WorkloadCluster) map[string][]byte {
-	cfg := *i.config.ControllerConfig
+func getOtherData(wc *v1.WorkloadCluster) map[string][]byte {
+	cfg := *ctlcfg.Config.ControllerConfig
 
 	cfg.All.ServiceSubnet = wc.Spec.Cluster.Network.ServiceCIDR
 	cfg.All.PodSubnet = wc.Spec.Cluster.Network.PodCIDR
