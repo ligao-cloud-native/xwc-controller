@@ -28,6 +28,8 @@ func (c *XWCController) OnAdd(obj interface{}) {
 	klog.V(2).Infof("OnAdd(%s) called: status is %s", wc.Name, wc.Status.Phase)
 
 	//TODO: metric
+	c.metrics.CurrentMetrics(c.xwcCacheStore)
+
 }
 
 func (c *XWCController) onAdd(wc *v1.WorkloadCluster) {
@@ -158,6 +160,8 @@ func (c *XWCController) OnUpdate(oldObj, newObj interface{}) {
 
 	c.onUpdate(wc)
 
+	c.metrics.CurrentMetrics(c.xwcCacheStore)
+
 }
 
 func (c *XWCController) onUpdate(wc *v1.WorkloadCluster) {
@@ -196,4 +200,9 @@ func (c *XWCController) onUpdate(wc *v1.WorkloadCluster) {
 
 }
 
-func (c *XWCController) OnDelete(obj interface{}) {}
+func (c *XWCController) OnDelete(obj interface{}) {
+	//TODO: delete
+
+	c.metrics.Trigger.WithLabelValues("pwc_controller", "delete").Inc()
+	c.metrics.CurrentMetrics(c.xwcCacheStore)
+}

@@ -7,6 +7,7 @@ import (
 	xwcclient "github.com/ligao-cloud-native/kubemc/pkg/client/clientset/versioned"
 	controllercfg "github.com/ligao-cloud-native/xwc-controller/config"
 	config "github.com/ligao-cloud-native/xwc-controller/pkg/componentconfig/controller/v1"
+	"github.com/ligao-cloud-native/xwc-controller/pkg/metrics"
 	"github.com/ligao-cloud-native/xwc-controller/provider"
 	"github.com/ligao-cloud-native/xwc-controller/provider/xwcagent"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -46,10 +47,11 @@ type XWCController struct {
 	// k8s an cni version compatible
 	compatibleVersion map[string][]string
 	// runtime type and version
-
+	// metrics
+	metrics *metrics.Metrics
 }
 
-func NewController(cfg *config.ControllerConfig) *XWCController {
+func NewController(cfg *config.ControllerConfig, metric *metrics.Metrics) *XWCController {
 	controllercfg.InitConfigure(cfg)
 
 	kubeConfig, err := buildConfig()
@@ -72,6 +74,7 @@ func NewController(cfg *config.ControllerConfig) *XWCController {
 		xwcClientSet:      xwcClient,
 		xwcProvider:       installer,
 		compatibleVersion: initCompatibleVersion(),
+		metrics:           metric,
 	}
 
 }

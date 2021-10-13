@@ -5,6 +5,7 @@ import (
 	"flag"
 	config "github.com/ligao-cloud-native/xwc-controller/pkg/componentconfig/controller/v1"
 	"github.com/ligao-cloud-native/xwc-controller/pkg/leaderelection"
+	"github.com/ligao-cloud-native/xwc-controller/pkg/metrics"
 	"k8s.io/klog/v2"
 )
 
@@ -22,11 +23,16 @@ func main() {
 		klog.Fatal(err)
 	}
 
+	metric := metrics.NewMetrics()
+
+	// start http server
+	go StartHttpServer(&Options{Metric: metric})
+
 	// set up signals so we handle the first shutdown signal gracefully
 	//stopCh := signals.SetupSignalHandler()
 
 	startController := func(ctx context.Context) {
-		c := NewController(cfg)
+		c := NewController(cfg, metric)
 		go func() {
 			c.Run()
 		}()
