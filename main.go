@@ -14,6 +14,7 @@ var (
 	kubeConfig       string
 	installProvider  string
 	controllerConfig string
+	timeout          int64
 )
 
 func main() {
@@ -32,7 +33,7 @@ func main() {
 	//stopCh := signals.SetupSignalHandler()
 
 	startController := func(ctx context.Context) {
-		c := NewController(cfg, metric)
+		c := NewController(cfg, metric, timeout)
 		go func() {
 			c.Run()
 		}()
@@ -46,8 +47,9 @@ func init() {
 	flag.StringVar(&kubeConfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
 
-	flag.StringVar(&installProvider, "provider", "xwcagent", "agent to install k8s cluster")
 	flag.StringVar(&controllerConfig, "config", "/etc/xwc-controller/config.json", "controller config file")
+	flag.StringVar(&installProvider, "provider", "xwcagent", "agent to install k8s cluster")
+	flag.Int64Var(&timeout, "timeout", 480, "xwc install timeout")
 
 	flag.Parse()
 }

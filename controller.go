@@ -49,9 +49,11 @@ type XWCController struct {
 	// runtime type and version
 	// metrics
 	metrics *metrics.Metrics
+	// install timeout
+	timeout int64
 }
 
-func NewController(cfg *config.ControllerConfig, metric *metrics.Metrics) *XWCController {
+func NewController(cfg *config.ControllerConfig, metric *metrics.Metrics, timeout int64) *XWCController {
 	controllercfg.InitConfigure(cfg)
 
 	kubeConfig, err := buildConfig()
@@ -65,7 +67,7 @@ func NewController(cfg *config.ControllerConfig, metric *metrics.Metrics) *XWCCo
 	var installer provider.Interface
 	switch provider.ProviderType(installProvider) {
 	case provider.XWCAgentProvider:
-		installer = xwcagent.NewXwcAgentProvider(installProvider, kubeClient)
+		installer = xwcagent.NewXwcAgentProvider(installProvider, kubeClient, timeout)
 	case provider.RPCProvider:
 	}
 
@@ -75,6 +77,7 @@ func NewController(cfg *config.ControllerConfig, metric *metrics.Metrics) *XWCCo
 		xwcProvider:       installer,
 		compatibleVersion: initCompatibleVersion(),
 		metrics:           metric,
+		timeout:           timeout,
 	}
 
 }

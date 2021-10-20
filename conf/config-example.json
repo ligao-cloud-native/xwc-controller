@@ -1,0 +1,33 @@
+{
+  "prcinstaller_server": "http://10.8.215.1:30168",
+  "all": {
+    "kube_service_addreses": "10.223.0.0/18",
+    "kube_pods_subnet": "192.168.0.0/24",
+    "ansible_ssh_private_key": "/opt/mycluster/private.key",
+    "ansible_ssh_common_args": "-o StrictHostKeyChecking:no",
+    "ansible_ssh_pass": "PARA_SSH_PASS",
+    "workload_cluster_name": "PARA_CLUSTER_NAME",
+    "task_completion_callback_url": "DEFAULT_CALLBACK_URL/task_completion_callback",
+    "pks_control_plane": false,
+    "apiserver_loadbalancer_domain_name": "PARA_DOMAIN_NAME",
+    "loadbalancer_apiserver": {
+      "Address": "PARA_LB_API_IP",
+      "Port": "6443"
+    },
+    "docker_insecure_registries": ["DEFAULT_REGISTRY_URL"],
+  },
+
+  "env": {
+    "registry_url": "119.147.81.156",
+    "callback_url": "119.147.81.156",
+    "control_api_url": "119.147.81.156",
+    "chartmuseum_url": "http://10.8.215.2:30088",
+    "pkgserver_url": {
+      "all": "http://pkg.example.com"
+    }
+  },
+
+  "addon": {}
+}
+
+

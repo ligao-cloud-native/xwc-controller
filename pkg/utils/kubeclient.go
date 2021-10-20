@@ -27,6 +27,7 @@ func XwcClient(kubeConfig string) (*xwcclient.Clientset, error) {
 }
 
 func KubeConfig(kubeConfig string) (*rest.Config, error) {
+
 	if kubeConfig == "" {
 		klog.Info("using in-cluster configuration")
 		return rest.InClusterConfig()

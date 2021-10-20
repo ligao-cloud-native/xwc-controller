@@ -29,13 +29,13 @@ type XwcAgentProvider struct {
 	//agentClient *agentclient.Client
 }
 
-func NewXwcAgentProvider(name string, kubeClient kubernetes.Interface) *XwcAgentProvider {
+func NewXwcAgentProvider(name string, kubeClient kubernetes.Interface, timeout int64) *XwcAgentProvider {
 
 	return &XwcAgentProvider{
 		name: name,
 		//agentClient: initAgentClient(),
 		prechecker: NewAgentPreChecker(),
-		installer:  NewInstaller(name, kubeClient),
+		installer:  NewInstaller(name, kubeClient, timeout),
 	}
 }
 

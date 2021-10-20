@@ -11,6 +11,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
+	"strconv"
 )
 
 var (
@@ -33,12 +34,14 @@ type Installer struct {
 	clientSet    kubernetes.Interface
 	config       *ctlcfg.Configure
 	providerName string
+	timeout      int64
 }
 
-func NewInstaller(name string, clientSet kubernetes.Interface) *Installer {
+func NewInstaller(name string, clientSet kubernetes.Interface, timeout int64) *Installer {
 	return &Installer{
 		clientSet:    clientSet,
 		providerName: name,
+		timeout:      timeout,
 	}
 
 }
@@ -101,7 +104,7 @@ func (i *Installer) createJobSecret(wc *v1.WorkloadCluster) error {
 }
 
 func (i *Installer) createJob(wc *v1.WorkloadCluster) error {
-	job := buildJob(wc.Name, JobTypeInstall, []string{"k8s", "install"})
+	job := i.buildJob(wc.Name, JobTypeInstall, []string{"k8s", "install"})
 	if job == nil {
 		return fmt.Errorf("build job from wc object %s error", wc.Name)
 	}
@@ -163,7 +166,7 @@ func buildSecret(wc *v1.WorkloadCluster) *corev1.Secret {
 
 }
 
-func buildJob(wcName string, jobType JobType, jobCmd []string) *batchv1.Job {
+func (i *Installer) buildJob(wcName string, jobType JobType, jobCmd []string) *batchv1.Job {
 	job := batchv1.Job{}
 
 	labels := map[string]string{
@@ -200,6 +203,10 @@ func buildJob(wcName string, jobType JobType, jobCmd []string) *batchv1.Job {
 				{
 					Name:  "PROVIDER",
 					Value: i.providerName,
+				},
+				{
+					Name:  "TIMEOUT",
+					Value: strconv.FormatInt(i.timeout, 10),
 				},
 				{
 					Name:  "INSTALLER_LOG_LEVEL",

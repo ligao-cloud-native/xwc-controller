@@ -10,10 +10,6 @@ import (
 	"time"
 )
 
-const (
-	installerMaxTTL = 900 // 15 minute timeout
-)
-
 // OnAdd handle "new" or "" status
 func (c *XWCController) OnAdd(obj interface{}) {
 	wc, ok := obj.(*v1.WorkloadCluster)
@@ -172,7 +168,7 @@ func (c *XWCController) onUpdate(wc *v1.WorkloadCluster) {
 		return
 	case v1.WorkloadClusterInstalling, v1.WorkloadClusterReducing, v1.WorkloadClusterScaling, v1.WorkloadClusterRemoving:
 		// check timeout
-		if metav1.Now().Unix()-wc.Status.LastTransitionTime.Unix() > installerMaxTTL {
+		if metav1.Now().Unix()-wc.Status.LastTransitionTime.Unix() > c.timeout {
 			wc.Status.Phase = v1.WorkloadClusterTimeout
 			wc.Status.LastTransitionTime = metav1.Time{}
 			// TODO: update wc, if error return
