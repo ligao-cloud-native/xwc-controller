@@ -8,36 +8,47 @@ type ControllerConfig struct {
 }
 
 type All struct {
-	LoadbalanceApiserver     LoadbalanceApiserver `json:"loadbalancer_apiserver"`
-	ServiceSubnet            string               `json:"kube_service_addresses"`
-	PodSubnet                string               `json:"kube_pods_subnet"`
-	WorkloadClusterName      string               `json:"workload_cluster_name"`
-	AnsibleSSHPrivateKeyFile string               `json:"ansible_ssh_private_key_file"`
-	AnsibleSSHCommonArgs     string               `json:"ansible_ssh_common_args"`
-	AnsibleSSHPass           string               `json:"ansible_ssh_pass"`
+	LoadbalanceApiserver      LoadbalanceApiserver `json:"loadbalance_apiserver"`
+	ServiceSubnet             string               `json:"kube_service_addresses"`
+	PodSubnet                 string               `json:"kube_pods_subnet"`
+	WorkloadClusterName       string               `json:"workload_cluster_name"`
+	TaskCompletionCallbackUrl string               `json:"task_completion_callback_url"`
+	PksControlPlane           string               `json:"pks_control_plane"`
+	DockerInsecureRegistries  string               `json:"docker_insecure_registries"`
+	AnsibleSSHPrivateKeyFile  string               `json:"ansible_ssh_private_key_file"`
+	AnsibleSSHCommonArgs      string               `json:"ansible_ssh_common_args"`
+	AnsibleSSHPass            string               `json:"ansible_ssh_pass"`
 }
 
 type Addon struct {
-	IngressControllerEnable bool
-	MonitoringEnable        bool
-	LoggingEnable           bool
+	IngressControllerEnabled bool   `json:"ingress-controller-enabled"`
+	MonitoringEnabled        bool   `json:"monitoring_enabled"`
+	LoggingEnabled           bool   `json:"monitoring_enabled"`
+	MetricsServerEnabled     bool   `json:"metrics_server_enabled"`
+	KubeNetworkPlugin        string `json:"kube_netrork_plugin"`
 }
 
 type Env struct {
-	RegistryUrl string
+	// installer image
+	RegistryUrl        string `josn:"registry_url"`
+	InstallerImageName string `josn:"installer_image_name"`
+
+	// callback url, controller api server
+	CallbackUrl string `josn:"callback_url"`
 
 	// a k8s service vmagent, defaukt http://vmserver.kmc-nats:8000
-	XwcServer string
+	VmserverUrl string `josn:"vmserver_url"`
 	// vmagent server url, default /vmas/VmAgentService
-	XwcServerUrl string
+	VmserverPath string `josn:"vmserver_path"`
 	// vmagent server secretID
-	XwcServerSecretId string
+	VmserverSecretid string `josn:"vmserver_secretid"`
 	// vmagent server secretKey
-	XwcServerSecretKey string
+	VmserverSecretkey string `josn:"vmserver_secretkey"`
 
-	FileServer         string
-	InstallerImageName string `josn:"installer_image_name"`
-	InstallerLogLevel  string `josn:"installer_log_level"`
+	// file server
+	PkgserverUrl string `josn:"pkgserver_url"`
+
+	InstallerLogLevel string `josn:"installer_log_level"`
 }
 
 type LoadbalanceApiserver struct {

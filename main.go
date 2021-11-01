@@ -15,6 +15,7 @@ var (
 	installProvider  string
 	controllerConfig string
 	timeout          int64
+	version          = "unknow"
 )
 
 func main() {
@@ -52,4 +53,9 @@ func init() {
 	flag.Int64Var(&timeout, "timeout", 480, "xwc install timeout")
 
 	flag.Parse()
+
+	klog.V(1).Infoln("start pwc-controller version: ", version)
+	klog.V(1).Infoln("precheck provider: ", installProvider)
+	klog.V(1).Infoln("install timeout: ", timeout)
+
 }

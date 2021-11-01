@@ -1,0 +1,49 @@
+# 代码中的flag参数可以通过container的args参数进行传递
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pwc-controller
+  labels:
+    app: pwc-controller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pwc-controller
+  template:
+    metadata:
+      labels:
+        app: pwc-controller
+    spec:
+      containers:
+      - name: pwc-controller
+        image: pwc-controller:latest
+        args:
+        - --logtostderr
+        - --v
+        - "1"
+        - -config
+        - /etc/config/config.json
+        - -key
+        - /etc/key/private.key
+        - -pubkey
+        - /etc/key/public.key
+        - -privider
+        - vmagent
+        - -timeout
+        - 900
+        volumeMounts:
+        - name: config
+          mountPath: /etc/config
+        - name: key
+          mountPath: /etc/key
+      volumes:
+      - name: config
+        configMap:
+          defaultMode: 420
+          name: pwc-controller-config
+      - name: key
+        secret:
+          defaultMode: 420
+          secretName: pwc-controller-kwy
