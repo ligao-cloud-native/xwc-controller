@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
-	ctlv1 "github.com/ligao-cloud-native/kubemc/pkg/apis/xwc/v1"
+	wcv1 "github.com/ligao-cloud-native/kubemc/pkg/apis/xwc/v1"
 	xwcclient "github.com/ligao-cloud-native/kubemc/pkg/client/clientset/versioned"
 	controllercfg "github.com/ligao-cloud-native/xwc-controller/config"
 	config "github.com/ligao-cloud-native/xwc-controller/pkg/componentconfig/controller/v1"
@@ -83,32 +83,33 @@ func NewController(cfg *config.ControllerConfig, metric *metrics.Metrics, timeou
 }
 
 func (c *XWCController) Run() {
-	// update controller configmap
-	go c.updateConfigMap()
+	// update installer job configmap
+	go c.updateJobConfigMap()
+
 	c.startController()
 }
 
-func (c *XWCController) updateConfigMap() {
+func (c *XWCController) updateJobConfigMap() {
 	envJson, err := json.Marshal(controllercfg.Config.ControllerConfig.Env)
 	if err != nil {
 		klog.Errorf("Marshal env error, %v", err)
 		return
 	}
 
-	cms, err := c.kubeClientSet.CoreV1().ConfigMaps("xwc-system").List(context.TODO(), metav1.ListOptions{})
+	cms, err := c.kubeClientSet.CoreV1().ConfigMaps("pks-installer").List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
-		klog.Errorf("List system configmap error, %v", err)
+		klog.Errorf("List job configmap error, %v", err)
 		return
 	}
 
 	for _, cm := range cms.Items {
 		if _, ok := cm.Data["env.json"]; !ok {
 			cm.Data["env.json"] = string(envJson)
-			_, err := c.kubeClientSet.CoreV1().ConfigMaps("xwc-system").Update(context.TODO(), &cm, metav1.UpdateOptions{})
+			_, err := c.kubeClientSet.CoreV1().ConfigMaps("pks-installer").Update(context.TODO(), &cm, metav1.UpdateOptions{})
 			if err != nil {
-				klog.Errorf("update configmap %s error, %v", cm.Name, err)
+				klog.Errorf("update job configmap %s error, %v", cm.Name, err)
 			} else {
-				klog.Infof("update configmap %s success", cm.Name)
+				klog.Infof("update job configmap %s success", cm.Name)
 			}
 		}
 	}
@@ -119,13 +120,13 @@ func (c *XWCController) startController() {
 	store, controller := cache.NewInformer(
 		&cache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (result runtime.Object, err error) {
-				return c.xwcClientSet.WorkloadClustersV1().Foos("").List(context.TODO(), options)
+				return c.xwcClientSet.WorkloadClustersV1().WorkloadClusters().List(context.TODO(), options)
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
-				return c.xwcClientSet.SamplecontrollerV1alpha1().Foos("").Watch(context.TODO(), options)
+				return c.xwcClientSet.WorkloadClustersV1().WorkloadClusters().Watch(context.TODO(), options)
 			},
 		},
-		&ctlv1.WorkloadCluster{},
+		&wcv1.WorkloadCluster{},
 		1*time.Minute,
 		c)
 	go controller.Run(wait.NeverStop)

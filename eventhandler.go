@@ -88,16 +88,19 @@ func (c *XWCController) onAdd(wc *v1.WorkloadCluster) {
 	}
 
 	// update workerloadcluster object
-	wcx, err := c.xwcClientSet.SamplecontrollerV1alpha1().Foos("").Update(context.TODO(), nil, nil)
+	var err error
+	wc, err = c.xwcClientSet.WorkloadClustersV1().WorkloadClusters().Update(context.TODO(), wc, metav1.UpdateOptions{})
 	if err != nil {
 		klog.Error(err)
 		return
 	}
 
 	wc.Status.Phase = v1.WorkloadClusterPrechecking
-	//TODO: update wc status
-	c.xwcClientSet.SamplecontrollerV1alpha1().Foos("").UpdateStatus(context.TODO(), nil, nil)
-
+	wc.Status.Action = v1.WorkloadClusterActionInstall
+	wc, err = c.xwcClientSet.WorkloadClustersV1().WorkloadClusters().UpdateStatus(context.TODO(), wc, metav1.UpdateOptions{})
+	if err != nil {
+		klog.Errorf("pwc %s status update error.", wc.Name)
+	}
 	// install
 	c.startInstaller(wc)
 
