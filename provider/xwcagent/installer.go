@@ -9,13 +9,14 @@ import (
 	"github.com/ligao-cloud-native/xwc-controller/pkg/utils"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
 	"strconv"
 )
 
 var (
-	pksInstallerNamespace string = "xwc-installer"
+	pksInstallerNamespace string = "pks-installer"
 	defaultBackoffLimit   int32  = 0
 	defaultCompletions    int32  = 1
 	defaultParallelism    int32  = 1
@@ -25,7 +26,7 @@ type JobType string
 
 const (
 	JobTypeInstall JobType = "install"
-	JobTypeReset   JobType = "reset"
+	JobTypeRemove  JobType = "reset"
 	JobTypeScale   JobType = "scale"
 	JobTypeReduce  JobType = "reduce"
 )
@@ -46,25 +47,100 @@ func NewInstaller(name string, clientSet kubernetes.Interface, timeout int64) *I
 
 }
 
-func (i *Installer) Install(wc *v1.WorkloadCluster) {
+func (i *Installer) Install(wc *v1.WorkloadCluster) (jobPath string, err error) {
 	if err := i.createJobConfigMap(wc); err != nil {
-		klog.Errorf("creater configmap for xwc %s error: %s", wc.Name, err.Error())
-		return
+		klog.Errorf("create configmap for xwc %s error: %s", wc.Name, err.Error())
+		return "", err
 	}
 
 	if err := i.createJobSecret(wc); err != nil {
-		klog.Errorf("creater secret for xwc %s error: %s", wc.Name, err.Error())
-		return
+		klog.Errorf("create secret for xwc %s error: %s", wc.Name, err.Error())
+		return "", err
 	}
 
-	i.createJob(wc)
+	job, err := i.createJob(wc, JobTypeInstall, []string{"k8s", "install"})
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%s/%s", job.Namespace, job.Name), nil
 }
 
-func (i *Installer) Reset() {}
+func (i *Installer) Scale(wc *v1.WorkloadCluster) (jobPath string, err error) {
+	job, err := i.createJob(wc, JobTypeScale, []string{"k8s", "scale"})
+	if err != nil {
+		return "", err
+	}
 
-func (i *Installer) Scale() {}
+	return fmt.Sprintf("%s/%s", job.Namespace, job.Name), nil
+}
 
-func (i *Installer) Reduce() {}
+func (i *Installer) Reduce(wc *v1.WorkloadCluster) (jobPath string, err error) {
+	job, err := i.createJob(wc, JobTypeReduce, []string{"k8s", "reduce"})
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%s/%s", job.Namespace, job.Name), nil
+}
+
+func (i *Installer) Remove(wc *v1.WorkloadCluster) (jobPath string, err error) {
+	job, err := i.createJob(wc, JobTypeRemove, []string{"k8s", "reset"})
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%s/%s", job.Namespace, job.Name), nil
+
+}
+
+func (i *Installer) Cleanup(wc *v1.WorkloadCluster) {
+	//delete job and pod
+	jobsLabel := fmt.Sprintf("app=%s", wc.Name)
+	jobs, err := utils.ListJob(i.clientSet, metav1.ListOptions{LabelSelector: jobsLabel})
+	if err != nil {
+		klog.Error(err)
+	}
+	for _, job := range jobs.Items {
+		err := utils.DeleteJob(i.clientSet, job.Name)
+		if err != nil {
+			klog.Error("delete job %s error: %v", job.Name, err)
+		} else {
+			klog.Infof("delete job %s ok", job.Name)
+		}
+
+		podLabel := fmt.Sprintf("job-name=%s", job.Name)
+		pods, err := utils.ListPod(i.clientSet, metav1.ListOptions{LabelSelector: podLabel})
+		if err != nil {
+			klog.Error(err)
+		} else {
+			for _, pod := range pods.Items {
+				err := utils.DeletePod(i.clientSet, pod.Name)
+				if err != nil {
+					klog.Error("delete job %s error: %v", job.Name, err)
+				} else {
+					klog.Infof("delete job %s ok", job.Name)
+				}
+			}
+		}
+	}
+
+	// delete job configMap
+	err = utils.DeleteConfigMap(i.clientSet, wc.Name)
+	if err != nil {
+		klog.Error("delete job configMap %s error: %v", wc.Name, err)
+	} else {
+		klog.Infof("delete job configMap %s ok", wc.Name)
+	}
+
+	// delete job secret
+	err = utils.DeleteSecret(i.clientSet, wc.Name)
+	if err != nil {
+		klog.Error("delete job configMap %s error: %v", wc.Name, err)
+	} else {
+		klog.Infof("delete job configMap %s ok", wc.Name)
+	}
+}
 
 func (i *Installer) createJobConfigMap(wc *v1.WorkloadCluster) error {
 	if cm, err := utils.GetConfigMap(i.clientSet, wc.Name); cm != nil && err == nil {
@@ -103,17 +179,21 @@ func (i *Installer) createJobSecret(wc *v1.WorkloadCluster) error {
 
 }
 
-func (i *Installer) createJob(wc *v1.WorkloadCluster) error {
-	job := i.buildJob(wc.Name, JobTypeInstall, []string{"k8s", "install"})
-	if job == nil {
-		return fmt.Errorf("build job from wc object %s error", wc.Name)
+func (i *Installer) createJob(wc *v1.WorkloadCluster, jobType JobType, cmd []string) (*batchv1.Job, error) {
+	if wc.Spec.Cluster.Type == v1.ClusterTypeK3S {
+		cmd[0] = "k3s"
+	}
+	jobCfg := i.buildJob(wc.Name, jobType, cmd)
+	if jobCfg == nil {
+		return nil, fmt.Errorf("build job from wc object %s error", wc.Name)
 	}
 
-	if err := utils.CreateJob(i.clientSet, job); err != nil {
-		return fmt.Errorf("create job for wc %s error: %s", wc.Name, err.Error())
+	job, err := utils.CreateJob(i.clientSet, jobCfg)
+	if err != nil {
+		return nil, fmt.Errorf("create job for wc %s error: %s", wc.Name, err.Error())
 	}
 
-	return nil
+	return job, nil
 }
 
 func buildConfigMap(wc *v1.WorkloadCluster) *corev1.ConfigMap {
@@ -284,8 +364,12 @@ func (i *Installer) buildJob(wcName string, jobType JobType, jobCmd []string) *b
 
 }
 
-func getHostsYaml() []byte {}
-func getNodesJson() []byte {}
+func getHostsYaml() []byte {
+	return nil
+}
+func getNodesJson() []byte {
+	return nil
+}
 
 func getOtherData(wc *v1.WorkloadCluster) map[string][]byte {
 	cfg := *ctlcfg.Config.ControllerConfig

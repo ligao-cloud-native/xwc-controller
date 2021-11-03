@@ -87,7 +87,7 @@ func (c *PreChecker) PreCheck(ip, uuid string) (int, string) {
 }
 
 func initAgentClient() *agentclient.Client {
-	vmserver := ctlconfig.Config.ControllerConfig.Env.XwcServer + ctlconfig.Config.ControllerConfig.Env.XwcServerUrl
+	vmserver := ctlconfig.Config.ControllerConfig.Env.VmserverUrl + ctlconfig.Config.ControllerConfig.Env.VmserverPath
 	cre := agentclient.Credential{
 		SecretId:  ctlconfig.Config.SecretId,
 		SecretKey: ctlconfig.Config.SecretKey,

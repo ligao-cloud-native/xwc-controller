@@ -8,7 +8,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-const pksInstallerNamespace = "xwc-installer"
+const pksInstallerNamespace = "pks-installer"
 
 func GetConfigMap(clientSet kubernetes.Interface, cmName string) (*corev1.ConfigMap, error) {
 	return clientSet.CoreV1().ConfigMaps(pksInstallerNamespace).Get(context.TODO(), cmName, metav1.GetOptions{})
@@ -17,6 +17,10 @@ func GetConfigMap(clientSet kubernetes.Interface, cmName string) (*corev1.Config
 func CreateConfigMap(clientSet kubernetes.Interface, cmObject *corev1.ConfigMap) error {
 	_, err := clientSet.CoreV1().ConfigMaps(pksInstallerNamespace).Create(context.TODO(), cmObject, metav1.CreateOptions{})
 	return err
+}
+
+func DeleteConfigMap(clientSet kubernetes.Interface, cmName string) error {
+	return clientSet.CoreV1().ConfigMaps(pksInstallerNamespace).Delete(context.TODO(), cmName, metav1.DeleteOptions{})
 }
 
 func GetSecret(clientSet kubernetes.Interface, secretName string) (*corev1.Secret, error) {
@@ -28,7 +32,26 @@ func CreateSecret(clientSet kubernetes.Interface, secretObject *corev1.Secret) e
 	return err
 }
 
-func CreateJob(clientSet kubernetes.Interface, jobObject *batchv1.Job) error {
-	_, err := clientSet.BatchV1().Jobs(pksInstallerNamespace).Create(context.TODO(), jobObject, metav1.CreateOptions{})
-	return err
+func DeleteSecret(clientSet kubernetes.Interface, secretName string) error {
+	return clientSet.CoreV1().Secrets(pksInstallerNamespace).Delete(context.TODO(), secretName, metav1.DeleteOptions{})
+}
+
+func CreateJob(clientSet kubernetes.Interface, jobObject *batchv1.Job) (*batchv1.Job, error) {
+	return clientSet.BatchV1().Jobs(pksInstallerNamespace).Create(context.TODO(), jobObject, metav1.CreateOptions{})
+}
+
+func ListJob(clientSet kubernetes.Interface, opts metav1.ListOptions) (*batchv1.JobList, error) {
+	return clientSet.BatchV1().Jobs(pksInstallerNamespace).List(context.TODO(), opts)
+}
+
+func DeleteJob(clientSet kubernetes.Interface, name string) error {
+	return clientSet.BatchV1().Jobs(pksInstallerNamespace).Delete(context.TODO(), name, metav1.DeleteOptions{})
+}
+
+func ListPod(clientSet kubernetes.Interface, opts metav1.ListOptions) (*corev1.PodList, error) {
+	return clientSet.CoreV1().Pods(pksInstallerNamespace).List(context.TODO(), opts)
+}
+
+func DeletePod(clientSet kubernetes.Interface, name string) error {
+	return clientSet.CoreV1().Pods(pksInstallerNamespace).Delete(context.TODO(), name, metav1.DeleteOptions{})
 }

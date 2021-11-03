@@ -64,17 +64,17 @@ func NewController(cfg *config.ControllerConfig, metric *metrics.Metrics, timeou
 	kubeClient := kubernetes.NewForConfigOrDie(kubeConfig)
 	xwcClient := xwcclient.NewForConfigOrDie(kubeConfig)
 
-	var installer provider.Interface
+	var p provider.Interface
 	switch provider.ProviderType(installProvider) {
 	case provider.XWCAgentProvider:
-		installer = xwcagent.NewXwcAgentProvider(installProvider, kubeClient, timeout)
+		p = xwcagent.NewXwcAgentProvider(installProvider, kubeClient, timeout)
 	case provider.RPCProvider:
 	}
 
 	return &XWCController{
 		kubeClientSet:     kubeClient,
 		xwcClientSet:      xwcClient,
-		xwcProvider:       installer,
+		xwcProvider:       p,
 		compatibleVersion: initCompatibleVersion(),
 		metrics:           metric,
 		timeout:           timeout,

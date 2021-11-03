@@ -6,6 +6,14 @@ import (
 )
 
 type Interface interface {
-	Precheck(wc *v1.WorkloadCluster, resultCh chan<- provider.PrecheckResultInterface, finished chan<- interface{})
-	Install(wc *v1.WorkloadCluster)
+	Precheck(nodes []v1.Node, resultCh chan<- provider.PrecheckResultInterface, finished chan<- interface{})
+	// install cluster
+	Install(wc *v1.WorkloadCluster) (jobPath string)
+	// remove cluster， and clean pwc resource
+	Remove(wc *v1.WorkloadCluster) (jobPath string)
+	Cleanup(wc *v1.WorkloadCluster)
+	// scale node
+	Scale(wc *v1.WorkloadCluster) (jobPath string)
+	// reduce node
+	Reduce(wc *v1.WorkloadCluster) (jobPath string)
 }
